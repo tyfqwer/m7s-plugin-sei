@@ -1,4 +1,4 @@
-module m7s-plugin-sei
+module github.com/tyfqwer/m7s-plugin-sei
 
 go 1.21
 
