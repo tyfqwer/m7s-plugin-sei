@@ -1,12 +1,13 @@
 package m7s_plugin_sei
 
 import (
-	"go.uber.org/zap"
+	"fmt"
 	"io"
 	"net/http"
 	"strconv"
 
 	. "m7s.live/engine/v4"
+	"m7s.live/engine/v4/codec"
 	"m7s.live/engine/v4/config"
 	"m7s.live/engine/v4/util"
 )
@@ -85,12 +86,23 @@ func (conf *SeiConfig) API_insertSEI(w http.ResponseWriter, r *http.Request) {
 		// 添加SEI数据到所有视频轨道
 		for _, vt := range s.Tracks.Video {
 			var au util.BLL
-			au.Push(vt.SpesificTrack.GetNALU_SEI())
+			item := vt.BytesPool.Get(1)
+
+			switch vt.CodecID {
+			case codec.CodecID_H264:
+				item.Value[0] = byte(codec.NALU_SEI)
+			case codec.CodecID_H265:
+				item.Value[0] = 0b00000000 | byte(codec.NAL_UNIT_SEI<<1)
+			default:
+				fmt.Println(vt.CodecID)
+			}
+			au.Push(item)
 			au.Push(vt.BytesPool.GetShell(buffer))
-			vt.Info("sei", zap.Int("len", len(buffer)))
+			//vt.Info("sei", zap.Int("len", len(buffer)))
 			vt.Value.AUList.UnshiftValue(&au)
 		}
 
+		util.ReturnOK(w, r)
 		//fmt.Println(sei, tb)
 		//if s.Tracks.AddSEI(byte(tb), sei) {
 		//	util.ReturnOK(w, r)
